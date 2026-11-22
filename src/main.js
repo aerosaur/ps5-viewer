@@ -10,6 +10,7 @@ import { startWatcher } from "./capture/watcher.js";
 import { createTestStream } from "./capture/test-pattern.js";
 import { win, registerShortcuts } from "./platform.js";
 import { createModes } from "./modes.js";
+import { createDiagnostics } from "./ui/diagnostics.js";
 
 const storage = (() => {
   try {
@@ -164,3 +165,14 @@ registerShortcuts({
   "CommandOrControl+Alt+Down": () => app.dispatch("volDown"),
   "CommandOrControl+Alt+M": () => app.dispatch("mute"),
 }).then((ok) => (app.shortcuts = ok));
+
+// ---- Diagnostics (D) ------------------------------------------------------
+export const VERSION = "0.1.0";
+$("titlebar").title = `PS5 Viewer ${VERSION}`;
+const diag = createDiagnostics($("diag"), {
+  getTrack: () => app.watcher.track,
+  getAudioStatus: () => audio.status(),
+  videoEl,
+  version: VERSION,
+});
+app.handlers.diag = () => diag.toggle();
