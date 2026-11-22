@@ -2,3 +2,6 @@ node_modules/
 src-tauri/target/
 .DS_Store
 .superpowers/
+src-tauri/gen/
+src-tauri/icons/android/
+src-tauri/icons/ios/
