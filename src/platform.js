@@ -27,6 +27,13 @@ function defaultRegistrar() {
   return gs ? (accel, handler) => gs.register(accel, handler) : null;
 }
 
+// Position first: moving onto a monitor with another scale triggers a DPI resize,
+// so the size has to be applied after it.
+export async function applyBounds(w, b, { PhysicalSize, PhysicalPosition }) {
+  await w.setPosition(new PhysicalPosition(Math.round(b.x), Math.round(b.y)));
+  await w.setSize(new PhysicalSize(Math.round(b.width), Math.round(b.height)));
+}
+
 const monitorRect = (m) => {
   const area = m.workArea ?? { position: m.position, size: m.size };
   return {
@@ -46,14 +53,8 @@ function tauriWin() {
       const [pos, size] = await Promise.all([w.outerPosition(), w.innerSize()]);
       return { x: pos.x, y: pos.y, width: size.width, height: size.height };
     },
-    async setBounds(b) {
-      await w.setSize(
-        new PhysicalSize(Math.round(b.width), Math.round(b.height)),
-      );
-      await w.setPosition(
-        new PhysicalPosition(Math.round(b.x), Math.round(b.y)),
-      );
-    },
+    setBounds: (b) => applyBounds(w, b, T.dpi),
+    setMinSize: (m) => w.setMinSize(new LogicalSize(m.width, m.height)),
     setLogicalSize: (s) =>
       w.setSize(new LogicalSize(Math.round(s.width), Math.round(s.height))),
     setPosition: (p) =>
@@ -88,6 +89,7 @@ function browserWin() {
     }),
     setBounds: noop,
     setLogicalSize: noop,
+    setMinSize: noop,
     setPosition: noop,
     scaleFactor: async () => devicePixelRatio,
     setAlwaysOnTop: noop,

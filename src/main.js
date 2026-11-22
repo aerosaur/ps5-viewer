@@ -3,7 +3,7 @@ import { loadState, saveState } from "./lib/state.js";
 import { actionForKey } from "./lib/keys.js";
 import { createPanel } from "./ui/panel.js";
 import { pickDevice } from "./lib/devices.js";
-import { STATE_COPY } from "./lib/signal.js";
+import { STATE_COPY, RETRY_MS, shouldRetryAudio } from "./lib/signal.js";
 import { openVideo, attachStream } from "./capture/video.js";
 import { createAudioEngine } from "./capture/audio.js";
 import { startWatcher } from "./capture/watcher.js";
@@ -87,7 +87,10 @@ window.app = app;
 // ---- Capture ---------------------------------------------------------------
 const $ = (id) => document.getElementById(id);
 const videoEl = $("video");
-const testMode = new URLSearchParams(location.search).has("test");
+const params = new URLSearchParams(location.search);
+const testMode = params.has("test");
+// Dev on the Mac: ?anycam accepts any camera. The real app is Cam Link only.
+const anyCam = params.has("anycam");
 const audio = createAudioEngine();
 app.audio = audio;
 audio.setVolume(app.state.volume);
@@ -118,7 +121,7 @@ async function connect() {
     return track;
   }
   const devices = await ensureLabels();
-  const cam = pickDevice(devices, "videoinput");
+  const cam = pickDevice(devices, "videoinput", { strict: !anyCam });
   if (!cam)
     throw Object.assign(new Error("no capture device"), {
       name: "NotFoundError",
@@ -126,12 +129,29 @@ async function connect() {
   const track = await openVideo(videoEl, cam.deviceId);
   $("device-label").textContent =
     `IN 01 / ${cam.label.replace(/\s*\([0-9a-f]{4}:[0-9a-f]{4}\)/i, "").toUpperCase()}`;
-  const mic = pickDevice(devices, "audioinput", { strict: true });
-  if (mic)
-    await audio.start({ deviceId: mic.deviceId }).catch(() => audio.stop());
-  else audio.stop();
+  await startCamLinkAudio(devices);
   return track;
 }
+
+async function startCamLinkAudio(devices) {
+  const mic = pickDevice(devices, "audioinput", { strict: true });
+  if (mic) await audio.start({ deviceId: mic.deviceId }).catch(() => audio.stop());
+  else audio.stop();
+}
+
+let audioRetrying = false;
+async function retryAudio() {
+  if (testMode || audioRetrying || !app.watcher) return;
+  if (!shouldRetryAudio(app.watcher.state, audio.status().live)) return;
+  audioRetrying = true;
+  try {
+    await startCamLinkAudio(await navigator.mediaDevices.enumerateDevices());
+  } finally {
+    audioRetrying = false;
+  }
+}
+setInterval(retryAudio, RETRY_MS);
+navigator.mediaDevices.addEventListener("devicechange", retryAudio);
 
 function modeLabelFor(track) {
   const s = track?.getSettings?.() ?? {};

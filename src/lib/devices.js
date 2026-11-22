@@ -11,3 +11,7 @@ export function pickDevice(devices, kind, { strict = false } = {}) {
   if (cam || strict) return cam ?? null;
   return real[0] ?? null;
 }
+
+export function isPresent(deviceId, devices) {
+  return Boolean(deviceId) && devices.some((d) => d.deviceId === deviceId);
+}

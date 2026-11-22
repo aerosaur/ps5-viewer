@@ -82,3 +82,9 @@ test("fit169 fits a 16:9 box inside", () => {
   assert.deepEqual(fit169(1000, 1000), { width: 1000, height: 563 });
   assert.deepEqual(fit169(1000, 400), { width: 711, height: 400 });
 });
+
+import { minSizeFor } from '../src/lib/geometry.js';
+test('minimum size: normal keeps the controls usable, picture-only modes can go down to mini', () => {
+  assert.deepEqual(minSizeFor('normal'), { width: 640, height: 566 });
+  for (const m of ['hidden', 'mini', 'full']) assert.deepEqual(minSizeFor(m), { width: 320, height: 180 });
+});

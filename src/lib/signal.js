@@ -36,3 +36,9 @@ export function isBlackFrame(rgba, threshold = 16) {
   }
   return true;
 }
+
+// Picture is connected but there's no sound: keep trying the Cam Link's audio endpoint,
+// which Windows often adds a moment after the video device.
+export function shouldRetryAudio(state, audioLive) {
+  return (state === "ok" || state === "no-signal") && !audioLive;
+}

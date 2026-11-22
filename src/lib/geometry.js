@@ -58,3 +58,10 @@ export function clampToMonitor(bounds, monitors) {
     y: clamp(bounds.y, mon.y, mon.y + mon.height - height),
   };
 }
+
+// Normal mode needs room for the controls (640 wide → 600×338 picture + chrome);
+// picture-only modes may shrink to mini and below.
+export function minSizeFor(mode) {
+  if (mode === "normal") return { width: 640, height: Math.round((600 * 9) / 16) + CHROME.top + CHROME.bottom };
+  return { width: 320, height: 180 };
+}

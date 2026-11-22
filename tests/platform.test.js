@@ -38,3 +38,13 @@ test("no registrar available (plain browser) registers nothing without throwing"
     [],
   );
 });
+
+import { applyBounds } from '../src/platform.js';
+test('applyBounds moves before resizing so a DPI change on the target monitor does not grow the window', async () => {
+  const calls = [];
+  const w = { setPosition: async (p) => calls.push(['pos', p.x, p.y]), setSize: async (s) => calls.push(['size', s.width, s.height]) };
+  const dpi = { PhysicalSize: class { constructor(width, height) { Object.assign(this, { width, height }); } },
+    PhysicalPosition: class { constructor(x, y) { Object.assign(this, { x, y }); } } };
+  await applyBounds(w, { x: 10.4, y: 20, width: 1040, height: 790 }, dpi);
+  assert.deepEqual(calls, [['pos', 10, 20], ['size', 1040, 790]]);
+});

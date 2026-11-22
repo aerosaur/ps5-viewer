@@ -1,5 +1,6 @@
 // Keeps the capture connected and reports one of: ok | no-device | no-signal | in-use.
 import { classify, isBlackFrame, RETRY_MS } from "../lib/signal.js";
+import { isPresent } from "../lib/devices.js";
 
 const TICK_MS = 500;
 
@@ -78,8 +79,15 @@ export function startWatcher({ videoEl, connect, onState }) {
       attempt();
   };
 
-  navigator.mediaDevices.addEventListener("devicechange", () => {
-    if (!track) attempt();
+  navigator.mediaDevices.addEventListener("devicechange", async () => {
+    if (!track) return attempt();
+    // Windows doesn't always end the track on unplug: check the device is still there.
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    if (!isPresent(track.getSettings().deviceId, devices)) {
+      track.stop();
+      drop();
+      evaluate();
+    }
   });
   setInterval(() => {
     sampleBlack();

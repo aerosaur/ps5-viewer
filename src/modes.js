@@ -1,5 +1,6 @@
 // Window modes: normal | hidden (picture only) | mini (small, on top) | full.
 import {
+  minSizeFor,
   CHROME,
   pictureOnlySize,
   normalSizeForPicture,
@@ -25,6 +26,7 @@ export function createModes({ app, win, pictureEl }) {
     const pic = pictureOnlySize({ width: b.width / s, height: b.height / s });
     const o = await offset();
     mode = "hidden";
+    await win.setMinSize(minSizeFor(mode));
     app.commit({ controlsHidden: true });
     await win.setLogicalSize(pic);
     await win.setPosition({ x: b.x + o.x, y: b.y + o.y });
@@ -41,6 +43,7 @@ export function createModes({ app, win, pictureEl }) {
     const o = await offset();
     mode = "normal";
     app.commit({ controlsHidden: false });
+    await win.setMinSize(minSizeFor(mode));
     await win.setLogicalSize(size);
     await win.setPosition({ x: b.x - o.x, y: b.y - o.y });
   }
@@ -49,6 +52,7 @@ export function createModes({ app, win, pictureEl }) {
     if (mode === "mini" || mode === "full") return;
     beforeMini = { bounds: await win.bounds(), mode };
     mode = "mini";
+    await win.setMinSize(minSizeFor(mode));
     body.classList.add("mini");
     const mon = await win.currentMonitor();
     await win.setAlwaysOnTop(true);
@@ -60,6 +64,7 @@ export function createModes({ app, win, pictureEl }) {
     body.classList.remove("mini");
     await win.setAlwaysOnTop(false);
     mode = beforeMini?.mode ?? "normal";
+    await win.setMinSize(minSizeFor(mode));
     if (beforeMini) await win.setBounds(beforeMini.bounds);
     beforeMini = null;
   }
@@ -106,6 +111,7 @@ export function createModes({ app, win, pictureEl }) {
   win.onResized(remember);
 
   async function restore() {
+    await win.setMinSize(minSizeFor(mode));
     if (!app.state.bounds) return;
     const b = clampToMonitor(app.state.bounds, await win.availableMonitors());
     if (b) await win.setBounds(b);

@@ -82,3 +82,11 @@ test("exact copy", () => {
     hint: "CLOSE OBS OR OTHER CAPTURE APPS",
   });
 });
+
+import { shouldRetryAudio } from '../src/lib/signal.js';
+test('audio is retried while the picture is fine but there is no sound', () => {
+  assert.equal(shouldRetryAudio('ok', false), true);
+  assert.equal(shouldRetryAudio('ok', true), false);
+  assert.equal(shouldRetryAudio('no-device', false), false);
+  assert.equal(shouldRetryAudio('no-signal', false), true);
+});

@@ -48,3 +48,15 @@ test('strict mode only accepts a Cam Link (no mic fallback, avoids feedback)', (
   const withCam = [...list, d('audioinput', 'Cam Link 4K')];
   assert.equal(pickDevice(withCam, 'audioinput', { strict: true }).label, 'Cam Link 4K');
 });
+
+import { isPresent } from '../src/lib/devices.js';
+test('strict video never falls back to another camera (e.g. OBS Virtual Camera)', () => {
+  const list = [d('videoinput', 'OBS Virtual Camera'), d('videoinput', 'Integrated Webcam')];
+  assert.equal(pickDevice(list, 'videoinput', { strict: true }), null);
+});
+test('isPresent tells whether the open device is still plugged in', () => {
+  const list = [d('videoinput', 'Cam Link 4K', 'abc')];
+  assert.equal(isPresent('abc', list), true);
+  assert.equal(isPresent('gone', list), false);
+  assert.equal(isPresent(undefined, list), false);
+});

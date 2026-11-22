@@ -54,6 +54,11 @@ export function createAudioEngine() {
         });
         ownsStream = true;
       }
+      const current = stream;
+      for (const t of current.getAudioTracks())
+        t.addEventListener("ended", () => {
+          if (stream === current) this.stop();
+        });
       source = ctx.createMediaStreamSource(stream);
       source.connect(gain);
     },
