@@ -8,6 +8,8 @@ import { openVideo, attachStream } from "./capture/video.js";
 import { createAudioEngine } from "./capture/audio.js";
 import { startWatcher } from "./capture/watcher.js";
 import { createTestStream } from "./capture/test-pattern.js";
+import { win, registerShortcuts } from "./platform.js";
+import { createModes } from "./modes.js";
 
 const storage = (() => {
   try {
@@ -151,3 +153,14 @@ app.watcher = startWatcher({
 // Keep the page from being frozen when the window is minimised (WebView2 ignores
 // backgroundThrottling); a held Web Lock is the workaround Tauri documents.
 navigator.locks?.request("ps5viewer-keepalive", () => new Promise(() => {}));
+
+// ---- Window modes & shortcuts ---------------------------------------------
+const modes = createModes({ app, win, pictureEl: $("picture") });
+app.modes = modes;
+Object.assign(app.handlers, modes.handlers);
+modes.restore();
+registerShortcuts({
+  "CommandOrControl+Alt+Up": () => app.dispatch("volUp"),
+  "CommandOrControl+Alt+Down": () => app.dispatch("volDown"),
+  "CommandOrControl+Alt+M": () => app.dispatch("mute"),
+}).then((ok) => (app.shortcuts = ok));
