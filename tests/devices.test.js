@@ -41,3 +41,10 @@ test("null when none of that kind", () => {
   assert.equal(pickDevice([], "videoinput"), null);
   assert.equal(pickDevice([d("audioinput", "Mic")], "videoinput"), null);
 });
+
+test('strict mode only accepts a Cam Link (no mic fallback, avoids feedback)', () => {
+  const list = [d('audioinput', 'MacBook Pro Microphone'), d('audioinput', 'USB Mic')];
+  assert.equal(pickDevice(list, 'audioinput', { strict: true }), null);
+  const withCam = [...list, d('audioinput', 'Cam Link 4K')];
+  assert.equal(pickDevice(withCam, 'audioinput', { strict: true }).label, 'Cam Link 4K');
+});

@@ -2,6 +2,12 @@ import { stepVolume, clampVolume } from "./lib/volume.js";
 import { loadState, saveState } from "./lib/state.js";
 import { actionForKey } from "./lib/keys.js";
 import { createPanel } from "./ui/panel.js";
+import { pickDevice } from "./lib/devices.js";
+import { STATE_COPY } from "./lib/signal.js";
+import { openVideo, attachStream } from "./capture/video.js";
+import { createAudioEngine } from "./capture/audio.js";
+import { startWatcher } from "./capture/watcher.js";
+import { createTestStream } from "./capture/test-pattern.js";
 
 const storage = (() => {
   try {
@@ -74,3 +80,74 @@ window.addEventListener("keydown", (e) => {
 
 app.render();
 window.app = app;
+
+// ---- Capture ---------------------------------------------------------------
+const $ = (id) => document.getElementById(id);
+const videoEl = $("video");
+const testMode = new URLSearchParams(location.search).has("test");
+const audio = createAudioEngine();
+app.audio = audio;
+audio.setVolume(app.state.volume);
+audio.setMuted(app.state.muted);
+app.listeners.add((s) => {
+  audio.setVolume(s.volume);
+  audio.setMuted(s.muted);
+});
+
+async function ensureLabels() {
+  // Device labels are blank until capture permission is granted once.
+  let devices = await navigator.mediaDevices.enumerateDevices();
+  if (devices.some((d) => d.label)) return devices;
+  const s = await navigator.mediaDevices
+    .getUserMedia({ video: true, audio: true })
+    .catch(() => navigator.mediaDevices.getUserMedia({ video: true }));
+  for (const t of s.getTracks()) t.stop();
+  return navigator.mediaDevices.enumerateDevices();
+}
+
+async function connect() {
+  if (testMode) {
+    const stream = app.testStream ?? (app.testStream = createTestStream());
+    const track = stream.getVideoTracks()[0].clone();
+    attachStream(videoEl, new MediaStream([track]));
+    await audio.start({ stream: new MediaStream(stream.getAudioTracks()) });
+    $("device-label").textContent = "IN 01 / TEST PATTERN";
+    return track;
+  }
+  const devices = await ensureLabels();
+  const cam = pickDevice(devices, "videoinput");
+  if (!cam)
+    throw Object.assign(new Error("no capture device"), {
+      name: "NotFoundError",
+    });
+  const track = await openVideo(videoEl, cam.deviceId);
+  $("device-label").textContent =
+    `IN 01 / ${cam.label.replace(/\s*\([0-9a-f]{4}:[0-9a-f]{4}\)/i, "").toUpperCase()}`;
+  const mic = pickDevice(devices, "audioinput", { strict: true });
+  if (mic)
+    await audio.start({ deviceId: mic.deviceId }).catch(() => audio.stop());
+  else audio.stop();
+  return track;
+}
+
+function modeLabelFor(track) {
+  const s = track?.getSettings?.() ?? {};
+  return s.height ? `${s.height}P · ${Math.round(s.frameRate ?? 0)}` : "--";
+}
+
+const overlay = $("state-overlay");
+app.watcher = startWatcher({
+  videoEl,
+  connect,
+  onState(state, track) {
+    const copy = STATE_COPY[state];
+    overlay.hidden = state === "ok";
+    overlay.querySelector(".state-title").textContent = copy?.title ?? "";
+    overlay.querySelector(".state-hint").textContent = copy?.hint ?? "";
+    app.setModeLabel(state === "ok" ? modeLabelFor(track) : "--");
+  },
+});
+
+// Keep the page from being frozen when the window is minimised (WebView2 ignores
+// backgroundThrottling); a held Web Lock is the workaround Tauri documents.
+navigator.locks?.request("ps5viewer-keepalive", () => new Promise(() => {}));
