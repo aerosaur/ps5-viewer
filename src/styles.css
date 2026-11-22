@@ -1,0 +1,440 @@
+/* Values from docs/design/mockup-E.dc.html */
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url(fonts/IBMPlexMono-Regular.woff2) format("woff2");
+  font-weight: 400;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url(fonts/IBMPlexMono-Medium.woff2) format("woff2");
+  font-weight: 500;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url(fonts/IBMPlexMono-SemiBold.woff2) format("woff2");
+  font-weight: 600;
+}
+
+:root {
+  --body: #a0a1a5;
+  --panel: #b4b5b9;
+  --panel-edge: #8c8d92;
+  --ink: #16171a;
+  --ink-2: #303136;
+  --picture-edge: #2b2c30;
+  --picture-text: #8e8e8a;
+  --key: #55565b;
+  --key-edge: #3f4044;
+  --key-light: #d0d1d4;
+  --key-light-edge: #9a9ba0;
+  --knob-1: #46474c;
+  --knob-2: #2f3034;
+  --knob-3: #3b3c40;
+  --knob-shadow: #26272a;
+  --display-sub: #a8a8a4;
+  --red: #ff8a8f;
+  --pink: #f4a6d8;
+  --blue: #8fb0ff;
+  --green: #5fd6b8;
+  --ps-red: #d7261e;
+  --ps-yellow: #f2b600;
+  --ps-green: #1e9a57;
+  --ps-blue: #1f5fbf;
+  --angle: 27deg;
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
+body {
+  background: var(--body);
+  color: var(--ink);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  user-select: none;
+  -webkit-user-select: none;
+}
+button {
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+button:focus-visible,
+#knob:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+#app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+}
+
+/* Title bar */
+#titlebar {
+  height: 44px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.title-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-width: 0;
+}
+.stripes {
+  display: flex;
+  gap: 3px;
+  margin-right: -4px;
+}
+.stripes i {
+  display: block;
+  width: 6px;
+  height: 18px;
+}
+.s-red {
+  background: var(--ps-red);
+}
+.s-yellow {
+  background: var(--ps-yellow);
+}
+.s-green {
+  background: var(--ps-green);
+}
+.s-blue {
+  background: var(--ps-blue);
+}
+.title-name {
+  font-weight: 600;
+}
+.title-meta {
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.title-right {
+  display: flex;
+  gap: 4px;
+}
+.winbtn {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  font-size: 14px;
+  color: var(--ink);
+}
+.winbtn:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* Picture: always 16:9, letterboxed in whatever space the stage has */
+#stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  container-type: size;
+}
+#picture {
+  position: relative;
+  width: min(100cqw, calc(100cqh * 16 / 9));
+  aspect-ratio: 16 / 9;
+  background: #0b0b0b;
+  border: 2px solid var(--picture-edge);
+  overflow: hidden;
+}
+#video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+#picture-tag {
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--picture-text);
+}
+#state-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--picture-text);
+  background: #0b0b0b;
+}
+#state-overlay[hidden] {
+  display: none;
+}
+.state-title {
+  font-size: 12px;
+}
+.state-hint {
+  font-size: 10px;
+}
+#diag {
+  position: absolute;
+  left: 12px;
+  top: 30px;
+  margin: 0;
+  padding: 8px 10px;
+  font:
+    11px/1.5 "IBM Plex Mono",
+    monospace;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.7);
+}
+
+#btn-show {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  width: 44px;
+  height: 44px;
+  display: none;
+  border: 1px solid var(--key-edge);
+  border-radius: 4px;
+  background: var(--key);
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 200ms;
+}
+#btn-show svg {
+  fill: none;
+  stroke: var(--green);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+body.controls-hidden #btn-show {
+  display: flex;
+}
+body.controls-hidden:hover #btn-show {
+  opacity: 1;
+}
+
+/* Control panel */
+#panel {
+  height: 112px;
+  flex: none;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: 4px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+#display {
+  width: 220px;
+  height: 76px;
+  flex: none;
+  background: #000;
+  border-radius: 3px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #fff;
+}
+.display-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--display-sub);
+}
+#display-vol {
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+body.muted #display-vol {
+  color: var(--red);
+}
+
+.volume {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.key-light {
+  width: 44px;
+  height: 44px;
+  border-radius: 4px;
+  border: 1px solid var(--key-light-edge);
+  background: var(--key-light);
+  box-shadow: 0 2px 0 var(--key-light-edge);
+  font-size: 18px;
+  color: var(--ink);
+}
+.key-light:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+#knob {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  flex: none;
+  cursor: ns-resize;
+  touch-action: none;
+}
+.knob-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    from -135deg,
+    var(--picture-edge) 0deg 1.2deg,
+    transparent 1.2deg 13.5deg
+  );
+  -webkit-mask: radial-gradient(circle, transparent 40px, #000 40.5px);
+  mask: radial-gradient(circle, transparent 40px, #000 40.5px);
+}
+.knob-cap {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    var(--knob-1) 0,
+    var(--knob-1) 24px,
+    var(--knob-2) 25px,
+    var(--knob-2) 29px,
+    var(--knob-3) 30px
+  );
+  box-shadow:
+    0 3px 0 var(--knob-shadow),
+    0 8px 14px rgba(0, 0, 0, 0.18);
+}
+.knob-rot {
+  position: absolute;
+  inset: 0;
+  transform: rotate(var(--angle));
+}
+.knob-marker {
+  position: absolute;
+  left: 34px;
+  top: 5px;
+  width: 4px;
+  height: 13px;
+  border-radius: 2px;
+  background: var(--key-light);
+}
+
+.keys {
+  margin-left: auto;
+  display: flex;
+  gap: 12px;
+}
+.key-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.key-label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--ink-2);
+}
+.key {
+  width: 56px;
+  height: 56px;
+  border-radius: 4px;
+  border: 1px solid var(--key-edge);
+  background: var(--key);
+  box-shadow: 0 2px 0 var(--key-edge);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.key:active,
+.key[aria-pressed="true"] {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+.ic {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ic-red {
+  stroke: var(--red);
+}
+.ic-pink {
+  stroke: var(--pink);
+}
+.ic-blue {
+  stroke: var(--blue);
+}
+.ic-green {
+  stroke: var(--green);
+}
+
+/* Picture-only modes: hidden controls, mini, fullscreen */
+body.controls-hidden #app,
+body.mini #app,
+body.full #app {
+  padding: 0;
+  gap: 0;
+}
+body.controls-hidden #titlebar,
+body.controls-hidden #panel,
+body.mini #titlebar,
+body.mini #panel,
+body.full #titlebar,
+body.full #panel {
+  display: none;
+}
+body.controls-hidden #picture,
+body.mini #picture,
+body.full #picture {
+  border: 0;
+}
+body.controls-hidden #picture-tag,
+body.mini #picture-tag,
+body.full #picture-tag {
+  display: none;
+}
+body.controls-hidden #stage,
+body.mini #stage {
+  background: #000;
+}
+body.full #stage {
+  background: #000;
+}
