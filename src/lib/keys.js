@@ -7,9 +7,6 @@ const MAP = {
   f: "full",
   d: "diag",
   escape: "escape",
-  "[": "syncDown",
-  "]": "syncUp",
-  "\\": "syncApply",
   r: "reconnect",
   "?": "help",
 };
@@ -29,8 +26,6 @@ export const KEY_HELP = Object.freeze([
   ["N", "MINI"],
   ["F", "FULL"],
   ["H", "HIDE"],
-  ["[ ]", "AUDIO SYNC −/+"],
-  ["\\", "USE MEASURED SYNC"],
   ["R", "RECONNECT"],
   ["D", "DIAGNOSTICS"],
   ["CTRL ALT PGUP/PGDN", "VOLUME, ANYWHERE"],

@@ -5,11 +5,11 @@ import { createPanel } from "./ui/panel.js";
 import { pickDevice } from "./lib/devices.js";
 import { STATE_COPY, RETRY_MS, shouldRetryAudio, hintFor } from "./lib/signal.js";
 import {
-  stepOffset,
-  clampOffset,
   suggestOffset,
   audioLatencyMs,
-  formatOffset,
+  createAutoSync,
+  AUTO_SYNC_CHECK_MS,
+  AUTO_SYNC_MIN_VIDEO_SAMPLES,
 } from "./lib/sync.js";
 import { formatDisplay } from "./lib/volume.js";
 import { openVideo, attachStream } from "./capture/video.js";
@@ -50,10 +50,6 @@ export const app = {
     this.commit({ muted: m });
     osd.volume();
   },
-  setSync(ms) {
-    this.commit({ syncMs: clampOffset(ms) });
-    osd.sync();
-  },
   setModeLabel(label) {
     this.modeLabel = label;
     this.render();
@@ -70,14 +66,6 @@ export const app = {
         return this.setVolume(stepVolume(this.state.volume, -5));
       case "mute":
         return this.setMuted(!this.state.muted);
-      case "syncUp":
-        return this.setSync(stepOffset(this.state.syncMs, 1));
-      case "syncDown":
-        return this.setSync(stepOffset(this.state.syncMs, -1));
-      case "syncApply": {
-        const s = app.syncSuggestion?.();
-        return s == null ? osd.show("SYNC", "NO READING") : this.setSync(s);
-      }
       default: {
         const h = this.handlers[action];
         if (h) return h();
@@ -95,8 +83,7 @@ const panel = createPanel(document.documentElement, {
 });
 
 // ---- On-picture readout (OSD) ---------------------------------------------
-// The panel shows volume already; the readout covers the modes where it's gone,
-// and sync, which has nowhere else to show.
+// The panel shows volume already; the readout covers the modes where it's gone.
 const osd = (() => {
   const el = document.getElementById("osd");
   let timer = null;
@@ -120,9 +107,6 @@ const osd = (() => {
         muted: app.state.muted,
       });
     },
-    sync() {
-      show("AUDIO SYNC", formatOffset(app.state.syncMs));
-    },
   };
 })();
 
@@ -130,7 +114,7 @@ window.addEventListener("keydown", (e) => {
   if (e.ctrlKey || e.altKey || e.metaKey) return;
   const action = actionForKey(e.key);
   if (!action) return;
-  const repeats = ["volUp", "volDown", "syncUp", "syncDown"];
+  const repeats = ["volUp", "volDown"];
   if (e.repeat && !repeats.includes(action)) return;
   e.preventDefault();
   if (action === "escape" && !helpEl.hidden) return (helpEl.hidden = true);
@@ -173,6 +157,7 @@ const testMode = params.has("test");
 // Dev on the Mac: ?anycam accepts any camera. The real app is Cam Link only.
 const anyCam = params.has("anycam");
 const audio = createAudioEngine();
+const autoSync = createAutoSync();
 app.audio = audio;
 audio.setVolume(app.state.volume);
 audio.setMuted(app.state.muted);
@@ -270,6 +255,9 @@ app.watcher = startWatcher({
     overlay.querySelector(".state-title").textContent = copy?.title ?? "";
     overlay.querySelector(".state-hint").textContent = hintFor(state, 0);
     app.setModeLabel(state === "ok" ? modeLabelFor(track) : "--");
+    // A new or lost signal: measure sync afresh rather than trust the old track's frames.
+    autoSync.reset();
+    app.diag?.resetLatency();
     paintLamps();
   },
 });
@@ -307,6 +295,7 @@ const diag = createDiagnostics($("diag"), {
   getAudioStatus: () => audio.status(),
   getExtra: () => ({
     syncMs: app.state.syncMs,
+    autoSync: app.autoSyncInfo,
     shortcuts: app.shortcuts ?? [],
     gate: app.gate ?? "…",
     state: app.watcher.state,
@@ -314,9 +303,21 @@ const diag = createDiagnostics($("diag"), {
   videoEl,
   version: VERSION,
 });
-// Only with sound actually flowing: otherwise audio latency reads as 0 and lies.
+// Only with sound actually flowing (otherwise audio latency reads as 0 and lies) and
+// enough video frames for the median to mean something.
+app.diag = diag;
 app.syncSuggestion = () => {
   const a = audio.status();
-  return a.live ? suggestOffset(diag.videoLatencyMs(), audioLatencyMs(a)) : null;
+  if (!a.live || diag.videoSamples() < AUTO_SYNC_MIN_VIDEO_SAMPLES) return null;
+  return suggestOffset(diag.videoLatencyMs(), audioLatencyMs(a));
 };
+// Automatic A/V sync: no keys. The last offset is remembered, so a restart starts
+// close and the checks only correct it.
+setInterval(() => {
+  if (app.watcher?.state !== "ok") return;
+  const next = autoSync.step(app.syncSuggestion(), app.state.syncMs);
+  if (next == null) return;
+  app.commit({ syncMs: next });
+  app.autoSyncInfo = { at: new Date().toTimeString().slice(0, 8) };
+}, AUTO_SYNC_CHECK_MS);
 app.handlers.diag = () => diag.toggle();

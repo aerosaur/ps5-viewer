@@ -41,12 +41,13 @@ export function createDiagnostics(
     const vMs = videoLatency.value;
     const aMs = a.live ? audioLatencyMs(a) : null;
     const hint = suggestOffset(vMs, aMs);
+    const auto = x.autoSync ?? {};
     container.textContent = [
       `FPS   ${fps.toFixed(1)}`,
       `DROP  ${q.droppedVideoFrames ?? 0}/${q.totalVideoFrames ?? 0}`,
       `VIDEO ${ms(vMs)} capture→screen`,
       `AUDIO ${a.live ? `${ms(aMs)} in+out (${a.state})` : `none${a.error ? ` (${a.error})` : ""}`}`,
-      `SYNC  +${x.syncMs ?? 0} ms${hint == null ? "" : `  measured +${hint} (\\ to use)`}`,
+      `SYNC  +${x.syncMs ?? 0} ms auto${hint == null ? "  (waiting for a reading)" : `  measured +${hint}`}${auto.at ? `  set ${auto.at}` : ""}`,
       `TRACK ${s.width ?? "-"}×${s.height ?? "-"}@${s.frameRate ? Math.round(s.frameRate) : "-"}`,
       `STATE ${x.state ?? "-"}  PERMS ${x.gate ?? "-"}`,
       `KEYS  ${(x.shortcuts ?? []).map((k) => k.replace("CommandOrControl+", "Ctrl+")).join(" ") || "none"}`,
@@ -65,5 +66,7 @@ export function createDiagnostics(
       }
     },
     videoLatencyMs: () => videoLatency.value,
+    videoSamples: () => videoLatency.count,
+    resetLatency: () => videoLatency.reset(),
   };
 }

@@ -1,6 +1,6 @@
 // A/V sync. Video and audio take separate paths through Windows, so they can land at
 // different times. We measure both and delay the audio (never the video, which would
-// add lag) by a user-set offset. Everything here is in milliseconds.
+// add lag) by the measured gap, applied automatically. Everything here is in milliseconds.
 
 export const SYNC_MAX_MS = 300;
 export const SYNC_STEP_MS = 10;
@@ -8,10 +8,6 @@ export const SYNC_STEP_MS = 10;
 export function clampOffset(ms) {
   if (!Number.isFinite(ms)) return 0;
   return Math.min(SYNC_MAX_MS, Math.max(0, Math.round(ms)));
-}
-
-export function stepOffset(ms, dir) {
-  return clampOffset(clampOffset(ms) + dir * SYNC_STEP_MS);
 }
 
 // Capture-to-display time for one video frame, from requestVideoFrameCallback metadata.
@@ -44,6 +40,9 @@ export function createMedian(size = 60) {
     get count() {
       return xs.length;
     },
+    reset() {
+      xs.length = 0;
+    },
   };
 }
 
@@ -61,6 +60,36 @@ export function suggestOffset(videoMs, audioMs) {
   if (!Number.isFinite(videoMs) || !Number.isFinite(audioMs)) return null;
   const raw = clampOffset(videoMs - audioMs);
   return Math.round(raw / SYNC_STEP_MS) * SYNC_STEP_MS;
+}
+
+// Automatic sync. Every check gets the current suggestion (null while there is no
+// reading). An offset is applied only when the readings agree for `agree` checks in a
+// row (within one step of each other) and it differs from the current offset by at
+// least `deadbandMs`, so the delay never hunts back and forth on a noisy reading.
+export const AUTO_SYNC_CHECK_MS = 2000;
+export const AUTO_SYNC_MIN_VIDEO_SAMPLES = 30;
+
+export function createAutoSync({ agree = 3, deadbandMs = 20 } = {}) {
+  let last = null;
+  let streak = 0;
+  return {
+    reset() {
+      last = null;
+      streak = 0;
+    },
+    step(suggestion, current) {
+      if (!Number.isFinite(suggestion)) {
+        last = null;
+        streak = 0;
+        return null;
+      }
+      streak = last != null && Math.abs(suggestion - last) <= SYNC_STEP_MS ? streak + 1 : 1;
+      last = suggestion;
+      if (streak < agree) return null;
+      const next = clampOffset(suggestion);
+      return Math.abs(next - clampOffset(current)) >= deadbandMs ? next : null;
+    },
+  };
 }
 
 export function formatOffset(ms) {

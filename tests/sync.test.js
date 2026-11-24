@@ -2,12 +2,12 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   clampOffset,
-  stepOffset,
   videoLatencyFrom,
   createMedian,
   audioLatencyMs,
   suggestOffset,
   formatOffset,
+  createAutoSync,
   SYNC_MAX_MS,
 } from "../src/lib/sync.js";
 
@@ -16,11 +16,6 @@ test("offset is clamped to 0..max and rounded", () => {
   assert.equal(clampOffset(12.6), 13);
   assert.equal(clampOffset(9999), SYNC_MAX_MS);
   assert.equal(clampOffset(NaN), 0);
-});
-test("offset steps by 10 and stops at the ends", () => {
-  assert.equal(stepOffset(0, 1), 10);
-  assert.equal(stepOffset(0, -1), 0);
-  assert.equal(stepOffset(SYNC_MAX_MS, 1), SYNC_MAX_MS);
 });
 test("video latency comes from capture to expected display", () => {
   assert.equal(
@@ -72,4 +67,50 @@ test("suggestion delays audio by the gap, to the nearest 10", () => {
 test("format", () => {
   assert.equal(formatOffset(0), "0 MS");
   assert.equal(formatOffset(40), "+40 MS");
+});
+
+test("auto sync applies only after 3 agreeing readings", () => {
+  const a = createAutoSync();
+  assert.equal(a.step(60, 0), null);
+  assert.equal(a.step(60, 0), null);
+  assert.equal(a.step(70, 0), 70);
+});
+test("auto sync ignores noise inside the deadband", () => {
+  const a = createAutoSync();
+  for (let i = 0; i < 5; i++) assert.equal(a.step(70, 60), null);
+});
+test("auto sync restarts its streak on a jump or a missing reading", () => {
+  const a = createAutoSync();
+  a.step(60, 0);
+  a.step(60, 0);
+  assert.equal(a.step(150, 0), null); // jumped: streak back to 1
+  a.step(150, 0);
+  assert.equal(a.step(150, 0), 150);
+  a.step(40, 150);
+  a.step(null, 150); // no reading resets
+  assert.equal(a.step(40, 150), null);
+});
+test("auto sync clamps and can bring the delay back to 0", () => {
+  const a = createAutoSync();
+  a.step(0, 120);
+  a.step(0, 120);
+  assert.equal(a.step(0, 120), 0);
+  const b = createAutoSync();
+  b.step(900, 0);
+  b.step(900, 0);
+  assert.equal(b.step(900, 0), SYNC_MAX_MS);
+});
+test("auto sync reset forgets the streak", () => {
+  const a = createAutoSync();
+  a.step(60, 0);
+  a.step(60, 0);
+  a.reset();
+  assert.equal(a.step(60, 0), null);
+});
+test("the median can be reset", () => {
+  const m = createMedian(5);
+  m.push(10);
+  m.reset();
+  assert.equal(m.value, null);
+  assert.equal(m.count, 0);
 });

@@ -19,10 +19,10 @@ test("unknown keys map to null", () => {
 });
 
 import { GLOBAL_KEYS, KEY_HELP } from "../src/lib/keys.js";
-test("v0.2 keys: sync, reconnect, help", () => {
-  assert.equal(actionForKey("["), "syncDown");
-  assert.equal(actionForKey("]"), "syncUp");
-  assert.equal(actionForKey("\\"), "syncApply");
+test("v0.2 keys: reconnect, help; sync is automatic, so no sync keys", () => {
+  assert.equal(actionForKey("["), null);
+  assert.equal(actionForKey("]"), null);
+  assert.equal(actionForKey("\\"), null);
   assert.equal(actionForKey("r"), "reconnect");
   assert.equal(actionForKey("?"), "help");
 });
