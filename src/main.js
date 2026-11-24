@@ -16,7 +16,8 @@ import { openVideo, attachStream } from "./capture/video.js";
 import { createAudioEngine } from "./capture/audio.js";
 import { startWatcher } from "./capture/watcher.js";
 import { createTestStream } from "./capture/test-pattern.js";
-import { win, registerShortcuts, waitForCaptureReady } from "./platform.js";
+import { win, registerShortcuts, waitForCaptureReady, updates } from "./platform.js";
+import { bannerText, createUpdateChecker } from "./lib/update.js";
 import { createModes } from "./modes.js";
 import { createDiagnostics } from "./ui/diagnostics.js";
 
@@ -298,6 +299,7 @@ const diag = createDiagnostics($("diag"), {
     autoSync: app.autoSyncInfo,
     shortcuts: app.shortcuts ?? [],
     gate: app.gate ?? "…",
+    update: app.updater?.status(),
     state: app.watcher.state,
   }),
   videoEl,
@@ -321,3 +323,29 @@ setInterval(() => {
   app.autoSyncInfo = { at: new Date().toTimeString().slice(0, 8) };
 }, AUTO_SYNC_CHECK_MS);
 app.handlers.diag = () => diag.toggle();
+
+// ---- Updates ----------------------------------------------------------------
+// Checked on launch and every 4 h. A newer version shows the banner; only a tap on it
+// downloads, installs and relaunches. Never automatic, so never mid-game by surprise.
+const updateBtn = $("btn-update");
+app.updater = createUpdateChecker({
+  check: updates.check,
+  onFound: (v) => {
+    updateBtn.dataset.version = v;
+    updateBtn.textContent = bannerText(v);
+    updateBtn.disabled = false;
+    updateBtn.hidden = false;
+  },
+});
+updateBtn.addEventListener("click", async () => {
+  const v = updateBtn.dataset.version;
+  updateBtn.disabled = true;
+  updateBtn.textContent = bannerText(v, "installing");
+  try {
+    await updates.install(); // exits and relaunches on success
+  } catch {
+    updateBtn.textContent = bannerText(v, "failed");
+    updateBtn.disabled = false;
+  }
+});
+app.updater.start();

@@ -141,6 +141,41 @@ button:focus-visible,
 .winbtn:hover {
   background: rgba(0, 0, 0, 0.06);
 }
+/* Update offer: a small key cap in the title bar. Only a tap installs. */
+#btn-update {
+  align-self: center;
+  height: 26px;
+  padding: 0 10px;
+  margin-right: 8px;
+  border: 1px solid var(--key-edge);
+  border-radius: 4px;
+  background: var(--key);
+  color: var(--key-light);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+#btn-update::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 8px;
+  vertical-align: 1px;
+  background: var(--ps-green);
+}
+#btn-update:hover {
+  background: var(--key-edge);
+}
+#btn-update:disabled {
+  cursor: default;
+  opacity: 0.8;
+}
+#btn-update[hidden] {
+  display: none;
+}
 
 /* Picture: always 16:9, letterboxed in whatever space the stage has */
 #stage {

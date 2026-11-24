@@ -51,6 +51,7 @@ export function createDiagnostics(
       `TRACK ${s.width ?? "-"}×${s.height ?? "-"}@${s.frameRate ? Math.round(s.frameRate) : "-"}`,
       `STATE ${x.state ?? "-"}  PERMS ${x.gate ?? "-"}`,
       `KEYS  ${(x.shortcuts ?? []).map((k) => k.replace("CommandOrControl+", "Ctrl+")).join(" ") || "none"}`,
+      `UPD   ${x.update?.available ? `v${x.update.available} available` : "up to date"}${x.update?.error ? `  (${x.update.error.slice(0, 60)})` : ""}`,
       `UA    ${edge}`,
       `BUILD ${version}`,
     ].join("\n");

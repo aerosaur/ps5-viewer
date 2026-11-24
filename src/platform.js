@@ -45,6 +45,12 @@ export async function waitForCaptureReady({
   return "timeout";
 }
 
+// Update feed (native side, tauri-plugin-updater). Outside the app there is none.
+export const updates = {
+  check: () => (T?.core ? T.core.invoke("update_check") : Promise.resolve(null)),
+  install: () => T.core.invoke("update_install"),
+};
+
 function defaultRegistrar() {
   const gs = T?.globalShortcut;
   return gs ? (accel, handler) => gs.register(accel, handler) : null;
