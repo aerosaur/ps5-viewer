@@ -17,6 +17,7 @@ test("defaults are as specified", () => {
     muted: false,
     controlsHidden: false,
     bounds: null,
+    syncMs: 0,
   });
 });
 test("missing key gives defaults", () => {
@@ -63,6 +64,7 @@ test("save then load round-trips", () => {
     muted: true,
     controlsHidden: true,
     bounds: { x: 1, y: 2, width: 3, height: 4 },
+    syncMs: 40,
   };
   saveState(s, state);
   assert.deepEqual(loadState(s), state);
@@ -78,4 +80,13 @@ test("throwing storage gives defaults and save does not throw", () => {
   };
   assert.deepEqual(loadState(bad), DEFAULTS);
   assert.doesNotThrow(() => saveState(bad, DEFAULTS));
+});
+
+test("v0.2: sync offset persists, defaults to 0, and v0.1 saves still load", () => {
+  const store = (v) => ({ getItem: () => JSON.stringify(v), setItem() {} });
+  assert.equal(loadState(store({ volume: 40 })).syncMs, 0);
+  assert.equal(loadState(store({ syncMs: 70 })).syncMs, 70);
+  assert.equal(loadState(store({ syncMs: 9999 })).syncMs, 300);
+  assert.equal(loadState(store({ syncMs: "70" })).syncMs, 0);
+  assert.equal(loadState(store({ volume: 40 })).volume, 40);
 });

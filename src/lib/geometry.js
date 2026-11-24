@@ -65,3 +65,32 @@ export function minSizeFor(mode) {
   if (mode === "normal") return { width: 640, height: Math.round((600 * 9) / 16) + CHROME.top + CHROME.bottom };
   return { width: 320, height: 180 };
 }
+
+// First launch (nothing saved): the 1040×790 default, shrunk to fit the monitor's work
+// area at its scale, centred. At 150% on a 1080p screen the default is 1185 physical px
+// tall and wouldn't fit. Monitor in physical px with its scale factor; result physical px.
+export const DEFAULT_SIZE = Object.freeze({ width: 1040, height: 790 });
+export const FIRST_LAUNCH_FILL = 0.9;
+
+export function initialBounds(monitor) {
+  if (!monitor) return null;
+  const s = monitor.scale || 1;
+  const maxW = (monitor.width / s) * FIRST_LAUNCH_FILL;
+  const maxH = (monitor.height / s) * FIRST_LAUNCH_FILL;
+  let size = { ...DEFAULT_SIZE };
+  if (size.width > maxW || size.height > maxH) {
+    const pic = fit169(
+      maxW - CHROME.sides * 2,
+      maxH - CHROME.top - CHROME.bottom,
+    );
+    size = normalSizeForPicture(pic);
+  }
+  const width = Math.round(Math.min(size.width * s, monitor.width));
+  const height = Math.round(Math.min(size.height * s, monitor.height));
+  return {
+    width,
+    height,
+    x: Math.round(monitor.x + (monitor.width - width) / 2),
+    y: Math.round(monitor.y + (monitor.height - height) / 2),
+  };
+}

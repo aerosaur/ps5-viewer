@@ -6,6 +6,7 @@ import {
   normalSizeForPicture,
   miniBounds,
   clampToMonitor,
+  initialBounds,
 } from "./lib/geometry.js";
 
 export function createModes({ app, win, pictureEl }) {
@@ -112,8 +113,11 @@ export function createModes({ app, win, pictureEl }) {
 
   async function restore() {
     await win.setMinSize(minSizeFor(mode));
-    if (!app.state.bounds) return;
-    const b = clampToMonitor(app.state.bounds, await win.availableMonitors());
+    // First launch: fit the default size to this monitor's scale instead of trusting
+    // 1040×790, which overflows a 1080p screen at 150%.
+    const b = app.state.bounds
+      ? clampToMonitor(app.state.bounds, await win.availableMonitors())
+      : initialBounds(await win.currentMonitor());
     if (b) await win.setBounds(b);
   }
 

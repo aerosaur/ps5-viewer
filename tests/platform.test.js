@@ -48,3 +48,33 @@ test('applyBounds moves before resizing so a DPI change on the target monitor do
   await applyBounds(w, { x: 10.4, y: 20, width: 1040, height: 790 }, dpi);
   assert.deepEqual(calls, [['pos', 10, 20], ['size', 1040, 790]]);
 });
+
+import { waitForCaptureReady } from "../src/platform.js";
+const noSleep = async () => {};
+test("capture waits until the native permission handler is in place", async () => {
+  let calls = 0;
+  const invoke = async (cmd) => {
+    assert.equal(cmd, "capture_ready");
+    return ++calls >= 3;
+  };
+  assert.equal(await waitForCaptureReady({ invoke, sleep: noSleep }), "ready");
+  assert.equal(calls, 3);
+});
+test("capture carries on after the timeout rather than hanging", async () => {
+  let calls = 0;
+  const r = await waitForCaptureReady({
+    invoke: async () => (calls++, false),
+    timeoutMs: 200,
+    pollMs: 50,
+    sleep: noSleep,
+  });
+  assert.equal(r, "timeout");
+  assert.equal(calls, 4);
+});
+test("outside the app, or with an older native side, there's nothing to wait for", async () => {
+  assert.equal(await waitForCaptureReady({ invoke: null }), "n/a");
+  assert.equal(
+    await waitForCaptureReady({ invoke: async () => { throw new Error("unknown command"); } }),
+    "n/a",
+  );
+});

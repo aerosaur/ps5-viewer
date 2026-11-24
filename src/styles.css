@@ -279,6 +279,132 @@ body.controls-hidden:hover #btn-show {
 body.muted #display-vol {
   color: var(--red);
 }
+.display-bottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+/* Status lamps: green = live, yellow = waiting on the PS5, red = needs you. */
+.lamps {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--display-sub);
+}
+.lamp-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lamp {
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3a3b3f;
+}
+.lamp[data-on="ok"] {
+  background: var(--green);
+}
+.lamp[data-on="wait"] {
+  background: var(--ps-yellow);
+}
+.lamp[data-on="bad"] {
+  background: var(--red);
+}
+
+/* On-picture readout for volume / mute / sync when the panel isn't there: the display, again. */
+#osd {
+  position: absolute;
+  right: 12px;
+  top: 10px;
+  min-width: 120px;
+  padding: 10px 14px;
+  border-radius: 3px;
+  background: #000;
+  color: #fff;
+  opacity: 1;
+  transition: opacity 300ms;
+}
+#osd[hidden] {
+  display: block;
+  opacity: 0;
+  pointer-events: none;
+}
+.osd-label {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--display-sub);
+  margin-bottom: 6px;
+}
+.osd-value {
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+#osd.muted .osd-value {
+  color: var(--red);
+}
+
+/* Key map (?) */
+#help {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: rgba(11, 11, 11, 0.94);
+  color: var(--picture-text);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+#help[hidden] {
+  display: none;
+}
+.help-title,
+.help-foot {
+  font-size: 10px;
+}
+.help-grid {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 8px 16px;
+  margin: 0;
+  font-size: 11px;
+  align-items: center;
+}
+.help-grid dt {
+  justify-self: end;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--key-light-edge);
+  background: var(--key-light);
+  color: var(--ink);
+  letter-spacing: 0.08em;
+}
+.help-grid dd {
+  margin: 0;
+}
+body.mini .help-grid {
+  font-size: 9px;
+  gap: 3px 10px;
+}
+body.mini .help-title,
+body.mini .help-foot {
+  display: none;
+}
+
+/* Picture-only modes: the pointer gets out of the way after a moment. */
+body.idle.controls-hidden #picture,
+body.idle.mini #picture,
+body.idle.full #picture {
+  cursor: none;
+}
 
 .volume {
   display: flex;

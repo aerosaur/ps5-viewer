@@ -1,4 +1,4 @@
-// Keeps the capture connected and reports one of: ok | no-device | no-signal | in-use.
+// Keeps the capture connected and reports one of: ok | no-device | no-signal | in-use | blocked.
 import { classify, isBlackFrame, RETRY_MS } from "../lib/signal.js";
 import { isPresent } from "../lib/devices.js";
 
@@ -11,6 +11,7 @@ export function startWatcher({ videoEl, connect, onState }) {
   let lastFrameAt = 0;
   let lastNonBlackAt = 0;
   let state = null;
+  let stateSince = performance.now();
   let connecting = false;
   let lastAttempt = 0;
 
@@ -69,9 +70,11 @@ export function startWatcher({ videoEl, connect, onState }) {
       lastFrameAt,
       lastNonBlackAt,
       now: performance.now(),
+      hidden: document.hidden,
     });
     if (next !== state) {
       state = next;
+      stateSince = performance.now();
       onState(state, track);
     }
     // Reconnect only when we have no live track; a live track with no picture is the PS5's problem.
@@ -89,11 +92,27 @@ export function startWatcher({ videoEl, connect, onState }) {
       evaluate();
     }
   });
+  // Back from minimised: frames resume a moment later, so don't count the gap as no signal.
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) lastFrameAt = lastNonBlackAt = performance.now();
+  });
   setInterval(() => {
-    sampleBlack();
+    if (!document.hidden) sampleBlack();
     evaluate();
   }, TICK_MS);
   attempt();
+
+  // R: drop whatever we have and try again now (e.g. right after closing OBS).
+  const reconnect = () => {
+    if (connecting) return;
+    if (track) {
+      track.stop();
+      drop();
+    }
+    error = null;
+    lastAttempt = 0;
+    return attempt();
+  };
 
   return {
     get state() {
@@ -102,6 +121,9 @@ export function startWatcher({ videoEl, connect, onState }) {
     get track() {
       return track;
     },
-    reconnect: attempt,
+    get stateMs() {
+      return performance.now() - stateSince;
+    },
+    reconnect,
   };
 }

@@ -1,18 +1,37 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+
 use tauri::Manager;
+
+/// Set once the WebView2 permission handler is installed. The page waits for it before
+/// asking for the camera, so WebView2 never gets the chance to show its own prompt.
+struct CaptureReady(Arc<AtomicBool>);
+
+#[tauri::command]
+fn capture_ready(state: tauri::State<'_, CaptureReady>) -> bool {
+    state.0.load(Ordering::SeqCst)
+}
 
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        // Off Windows there is no handler to wait for.
+        .manage(CaptureReady(Arc::new(AtomicBool::new(!cfg!(windows)))))
+        .invoke_handler(tauri::generate_handler![capture_ready])
         .setup(|app| {
             let window = app
                 .get_webview_window("main")
                 .expect("main window missing");
             #[cfg(windows)]
-            window.with_webview(|webview| unsafe {
-                allow_capture_permissions(&webview.controller());
-            })?;
+            {
+                let ready = app.state::<CaptureReady>().0.clone();
+                window.with_webview(move |webview| {
+                    unsafe { allow_capture_permissions(&webview.controller()) };
+                    ready.store(true, Ordering::SeqCst);
+                })?;
+            }
             #[cfg(not(windows))]
             let _ = window;
             Ok(())

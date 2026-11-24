@@ -1,5 +1,6 @@
 // Persisted app state. Anything unreadable or wrongly typed falls back to its default.
 import { clampVolume } from "./volume.js";
+import { clampOffset } from "./sync.js";
 
 const KEY = "ps5viewer:v1";
 
@@ -8,6 +9,7 @@ export const DEFAULTS = Object.freeze({
   muted: false,
   controlsHidden: false,
   bounds: null,
+  syncMs: 0,
 });
 
 function validBounds(b) {
@@ -35,6 +37,7 @@ export function loadState(storage) {
         ? raw.controlsHidden
         : DEFAULTS.controlsHidden,
     bounds: validBounds(raw.bounds),
+    syncMs: Number.isFinite(raw.syncMs) ? clampOffset(raw.syncMs) : DEFAULTS.syncMs,
   };
 }
 

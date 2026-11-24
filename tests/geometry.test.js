@@ -88,3 +88,34 @@ test('minimum size: normal keeps the controls usable, picture-only modes can go 
   assert.deepEqual(minSizeFor('normal'), { width: 640, height: 566 });
   for (const m of ['hidden', 'mini', 'full']) assert.deepEqual(minSizeFor(m), { width: 320, height: 180 });
 });
+
+import { initialBounds } from "../src/lib/geometry.js";
+// 1920×1080 with a 48 px (physical) taskbar.
+const mon = (scale) => ({ x: 0, y: 0, width: 1920, height: 1032, scale });
+const inside = (b, m) =>
+  assert.ok(
+    b.x >= m.x && b.y >= m.y && b.x + b.width <= m.x + m.width && b.y + b.height <= m.y + m.height,
+    JSON.stringify(b),
+  );
+test("first launch at 100% keeps the mockup size, centred", () => {
+  const b = initialBounds(mon(1));
+  assert.deepEqual([b.width, b.height], [1040, 790]);
+  assert.equal(b.x, 440);
+  inside(b, mon(1));
+});
+for (const scale of [1.25, 1.5, 1.75]) {
+  test(`first launch at ${scale * 100}% fits the screen and keeps a 16:9 picture`, () => {
+    const b = initialBounds(mon(scale));
+    inside(b, mon(scale));
+    const pic = pictureOnlySize({ width: b.width / scale, height: b.height / scale });
+    near(pic.width / pic.height, 16 / 9, 0.02);
+    assert.ok(b.height <= 1032 * 0.9 + 1);
+  });
+}
+test("first launch on a second monitor is placed on that monitor", () => {
+  const b = initialBounds({ x: 1920, y: 0, width: 2560, height: 1400, scale: 1 });
+  assert.ok(b.x >= 1920);
+});
+test("no monitor, no bounds", () => {
+  assert.equal(initialBounds(null), null);
+});

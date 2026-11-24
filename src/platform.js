@@ -22,6 +22,29 @@ export async function registerShortcuts(map, registrar = defaultRegistrar()) {
   return ok;
 }
 
+// The native side grants camera/mic to the page from a WebView2 handler that is
+// installed a moment after the page starts. Asking for the camera before it's in place
+// is what made WebView2 show its own permission prompt on first launch. Resolves
+// "ready", "timeout" (carry on anyway), or "n/a" outside the app.
+export async function waitForCaptureReady({
+  invoke = T?.core?.invoke,
+  timeoutMs = 3000,
+  pollMs = 50,
+  sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
+} = {}) {
+  if (!invoke) return "n/a";
+  const tries = Math.max(1, Math.ceil(timeoutMs / pollMs));
+  for (let i = 0; i < tries; i++) {
+    try {
+      if (await invoke("capture_ready")) return "ready";
+    } catch {
+      return "n/a"; // an older native side without the command
+    }
+    await sleep(pollMs);
+  }
+  return "timeout";
+}
+
 function defaultRegistrar() {
   const gs = T?.globalShortcut;
   return gs ? (accel, handler) => gs.register(accel, handler) : null;

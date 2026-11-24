@@ -34,11 +34,7 @@ test("device busy error means in-use", () => {
 test("no device", () => {
   assert.equal(classify({ ...ok, hasDevice: false }), "no-device");
 });
-test("other errors (permission denied, not found) read as no-device", () => {
-  assert.equal(
-    classify({ ...ok, error: { name: "NotAllowedError" } }),
-    "no-device",
-  );
+test("not found reads as no-device", () => {
   assert.equal(
     classify({ ...ok, error: { name: "NotFoundError" } }),
     "no-device",
@@ -89,4 +85,28 @@ test('audio is retried while the picture is fine but there is no sound', () => {
   assert.equal(shouldRetryAudio('ok', true), false);
   assert.equal(shouldRetryAudio('no-device', false), false);
   assert.equal(shouldRetryAudio('no-signal', false), true);
+});
+
+import { hintFor, IN_USE_ESCALATE_MS } from "../src/lib/signal.js";
+test("permission refused reads as blocked, not no-device", () => {
+  for (const name of ["NotAllowedError", "PermissionDeniedError", "SecurityError"])
+    assert.equal(classify({ ...ok, error: { name } }), "blocked");
+  assert.equal(STATE_COPY.blocked.title, "CAMERA BLOCKED");
+});
+test("a hidden window never reads as no-signal", () => {
+  assert.equal(
+    classify({ ...ok, lastFrameAt: now - 60000, lastNonBlackAt: now - 60000, hidden: true }),
+    "ok",
+  );
+  assert.equal(classify({ ...ok, hasDevice: false, hidden: true }), "no-device");
+  assert.equal(
+    classify({ ...ok, error: { name: "NotReadableError" }, hidden: true }),
+    "in-use",
+  );
+});
+test("in-use hint gets specific about OBS after a while", () => {
+  assert.equal(hintFor("in-use", 0), "CLOSE OBS OR OTHER CAPTURE APPS");
+  assert.match(hintFor("in-use", IN_USE_ESCALATE_MS), /DEACTIVATE WHEN NOT SHOWING/);
+  assert.equal(hintFor("no-signal", 99999), "CHECK PS5 IS ON · HDCP OFF");
+  assert.equal(hintFor("ok"), "");
 });
