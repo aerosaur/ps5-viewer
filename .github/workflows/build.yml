@@ -31,3 +31,50 @@ jobs:
           path: |
             src-tauri/target/release/bundle/nsis/*.exe
             src-tauri/target/release/ps5-viewer.exe
+
+  # Smoke test on a real Windows box: does the built app start, open its window and stay up?
+  # There's no capture card on the runner, so the app should sit on NO DEVICE; that's fine.
+  smoke:
+    needs: windows
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ps5-viewer-windows
+          path: dist
+      - name: Launch, wait, check the window
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem dist -Recurse -Filter ps5-viewer.exe | Select-Object -First 1
+          if (-not $exe) { throw "ps5-viewer.exe not in the artifact" }
+          $p = Start-Process -FilePath $exe.FullName -PassThru
+          Start-Sleep -Seconds 20
+          $p.Refresh()
+          if ($p.HasExited) { throw "app exited after start, code $($p.ExitCode)" }
+          $title = (Get-Process -Id $p.Id).MainWindowTitle
+          "pid $($p.Id), window title '$title', working set $([math]::Round($p.WorkingSet64/1MB)) MB"
+          $wv = Get-Process msedgewebview2 -ErrorAction SilentlyContinue
+          "WebView2 processes: $(@($wv).Count)"
+          if (@($wv).Count -eq 0) { throw "no WebView2 process: the page never loaded" }
+          if ($title -ne 'PS5') { Write-Warning "window title is '$title', expected 'PS5' (may be empty without a desktop session)" }
+      - name: Screenshot
+        if: always()
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+          [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+          $bmp.Save("$PWD\smoke.png")
+      - name: Stop the app
+        if: always()
+        shell: pwsh
+        run: Get-Process ps5-viewer -ErrorAction SilentlyContinue | Stop-Process -Force
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ps5-viewer-smoke
+          path: smoke.png
+          if-no-files-found: warn
